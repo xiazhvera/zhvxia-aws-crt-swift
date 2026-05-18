@@ -3,17 +3,10 @@ name: Update Version on Release
 # This workflow automatically updates the CRTVersion in CommonRuntimeKit.swift when a new release is created.
 # It extracts the version from the tag (e.g., v0.61.0 -> 0.61.0), updates the source file,
 # and moves the tag to point to the new commit with the updated version.
-#
-# Supports both:
-# - Creating a release via GitHub UI (triggers on 'release: published')
-# - Pushing a tag directly (triggers on 'push: tags')
 
 on:
   release:
     types: [published]  # Triggers when a release is published via GitHub UI
-  push:
-    tags:
-      - 'v*.*.*'  # Matches tags like v0.60.0, v1.0.0, etc.
 
 permissions:
   contents: write  # Required to push commits and tags
@@ -21,8 +14,6 @@ permissions:
 jobs:
   update-version:
     runs-on: ubuntu-latest
-    # Prevent duplicate runs when both release and tag push events fire
-    if: github.event_name == 'release' || (github.event_name == 'push' && !github.event.created)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,18 +24,12 @@ jobs:
       - name: Extract version from tag
         id: get_version
         run: |
-          # Get the tag name based on event type
-          if [ "${{ github.event_name }}" == "release" ]; then
-            TAG_NAME="${{ github.event.release.tag_name }}"
-          else
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-          fi
-          
+          TAG_NAME="${{ github.event.release.tag_name }}"
           # Remove the 'v' prefix to get the version
           VERSION=${TAG_NAME#v}
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION from tag: $TAG_NAME (event: ${{ github.event_name }})"
+          echo "Extracted version: $VERSION from tag: $TAG_NAME"
 
       - name: Update CRTVersion in CommonRuntimeKit.swift
         run: |
