@@ -9,7 +9,7 @@ public struct CommonRuntimeKit {
 
   /// The current version of the AWS Common Runtime Kit for Swift.
   /// This value is automatically updated by the GitHub Action when a new tag is released.
-  public static let CRTVersion = "1.2.3"
+  public static let CRTVersion = "1.2.4"
 
   /// Initializes the library.
   /// Must be called before using any other functionality.
