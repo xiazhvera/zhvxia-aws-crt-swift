@@ -12,6 +12,9 @@ on:
 permissions:
   contents: write  # Required to push commits and tags
 
+env:
+  GH_TOKEN: ${{ github.token }}
+
 jobs:
   update-version:
     runs-on: ubuntu-latest
