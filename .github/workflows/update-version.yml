@@ -24,7 +24,7 @@ jobs:
         run: |
           # Set up SSH configuration
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.DEPLOY_KEY_PRIVATE.DEPLOY_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
           # Add GitHub to known hosts to avoid host verification prompt
