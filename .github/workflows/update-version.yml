@@ -20,12 +20,6 @@ jobs:
   update-version:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.CRT_CI_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Retrieve deploy key and setup SSH
         run: |
           # Set up SSH configuration
