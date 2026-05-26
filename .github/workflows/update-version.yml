@@ -10,7 +10,7 @@ on:
     types: [published]  # Triggers when a release is published via GitHub UI
 
 permissions:
-  contents: read    # Required to checkout repository
+  contents: write    # Required to checkout repository
 
 env:
   AWS_REGION: us-east-1
