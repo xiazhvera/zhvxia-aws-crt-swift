@@ -39,11 +39,16 @@ jobs:
           EOF
           chmod 600 ~/.ssh/config
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
       - name: Configure git to use SSH with deploy key
         run: |
           # Set remote URL to use SSH
           git remote set-url origin git@github.com:${{ github.repository }}.git
-          git checkout main
 
       - name: Extract version from tag
         id: get_version
