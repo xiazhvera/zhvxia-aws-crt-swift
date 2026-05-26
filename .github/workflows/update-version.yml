@@ -31,12 +31,12 @@ jobs:
           ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
           # Configure SSH to use the key for GitHub
-          cat > ~/.ssh/config << EOF
-            Host github.com
-              HostName github.com
-              User git
-              IdentityFile ~/.ssh/deploy_key
-            EOF
+          cat > ~/.ssh/config << 'EOF'
+          Host github.com
+            HostName github.com
+            User git
+            IdentityFile ~/.ssh/deploy_key
+          EOF
           chmod 600 ~/.ssh/config
 
       - name: Checkout repository
