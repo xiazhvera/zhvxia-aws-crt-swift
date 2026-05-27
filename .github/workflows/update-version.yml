@@ -30,7 +30,7 @@ jobs:
       - name: Configure git to use HTTPS with GITHUB_TOKEN
         run: |
           # Use HTTPS with GITHUB_TOKEN — no deploy key required
-          git remote set-url origin https://${{ GITHUB_ACTOR }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://bot:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Extract version from tag
         id: get_version
