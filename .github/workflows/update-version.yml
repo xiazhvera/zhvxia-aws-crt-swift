@@ -40,6 +40,10 @@ jobs:
             IdentityFile ~/.ssh/deploy_key
           EOF
           chmod 600 ~/.ssh/config
+
+          # Force git to use the deploy key regardless of any SSH agent
+          echo "GIT_SSH_COMMAND=ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" >> $GITHUB_ENV
+
           ssh -T git@github.com -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no 2>&1 || true
 
       - name: Checkout repository
