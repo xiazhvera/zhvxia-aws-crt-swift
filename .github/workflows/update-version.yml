@@ -26,7 +26,8 @@ jobs:
           # Write the deploy key to a temp file
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ vars.DEPLOY_KEY_ENV }}" > ~/.ssh/deploy_key
+          echo -e "${{ vars.DEPLOY_KEY_ENV }}" > ~/.ssh/deploy_key
+          # Ensure file ends with a newline (required by OpenSSH)
           chmod 600 ~/.ssh/deploy_key
 
           # Trust GitHub's host key
@@ -38,8 +39,21 @@ jobs:
 
       - name: Verify deploy key works
         run: |
-          echo "=== First line of key (should be '-----BEGIN OPENSSH PRIVATE KEY-----') ==="
+          echo "=== Key file size (0 bytes = secret is empty or not accessible) ==="
+          wc -c < ~/.ssh/deploy_key
+
+          echo "=== First line of key ==="
           head -1 ~/.ssh/deploy_key
+
+          # Abort early with a clear message if the file is empty or too small to be a key
+          KEY_SIZE=$(wc -c < ~/.ssh/deploy_key)
+          if [ "$KEY_SIZE" -lt 100 ]; then
+            echo "❌ DEPLOY_KEY secret appears to be empty or missing."
+            echo "   Check that the secret named 'DEPLOY_KEY' exists under:"
+            echo "   Settings → Environments → DEPLOY_KEY_PRIVATE → Environment secrets"
+            echo "   The value must be the full private key including the BEGIN/END header lines."
+            exit 1
+          fi
 
           echo "=== Key fingerprint ==="
           ssh-keygen -lf ~/.ssh/deploy_key
