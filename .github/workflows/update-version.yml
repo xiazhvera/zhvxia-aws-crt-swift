@@ -26,7 +26,7 @@ jobs:
           # Write the deploy key to a temp file
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ env.DEPLOY_KEY_ENV }}" > ~/.ssh/deploy_key
+          echo "${{ vars.DEPLOY_KEY_ENV }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
           # Trust GitHub's host key
