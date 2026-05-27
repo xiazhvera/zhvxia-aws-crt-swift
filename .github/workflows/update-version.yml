@@ -21,21 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: DEPLOY_KEY_PRIVATE
     steps:
-      - name: Setup SSH agent with deploy key
+      - name: Setup SSH with deploy key
         run: |
-          # Start the SSH agent and export its environment variables for subsequent steps
-          eval $(ssh-agent -s)
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
-          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
-
-          # Add the deploy key to the agent
-          echo "${{ secrets.DEPLOY_KEY }}" | ssh-add -
-
-          # Trust GitHub's host key
+          # Write the deploy key to a temp file
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Trust GitHub's host key
           ssh-keyscan -H github.com >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+          # Point git at the key file directly — no agent or passphrase prompt needed
+          echo "GIT_SSH_COMMAND=ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" >> $GITHUB_ENV
 
       - name: Checkout repository
         uses: actions/checkout@v4
