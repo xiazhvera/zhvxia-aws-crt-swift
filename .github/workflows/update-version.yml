@@ -38,19 +38,24 @@ jobs:
 
       - name: Verify deploy key works
         run: |
+          echo "=== First line of key (should be '-----BEGIN OPENSSH PRIVATE KEY-----') ==="
+          head -1 ~/.ssh/deploy_key
+
           echo "=== Key fingerprint ==="
           ssh-keygen -lf ~/.ssh/deploy_key
 
-          echo "=== Testing SSH connection to GitHub ==="
-          # Exit code 1 is expected (GitHub says "Hi <user>! You've successfully authenticated")
-          # Exit code 255 means authentication failed
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -T git@github.com 2>&1 && true
+          echo "=== Public key derived from private key (compare this to your repo's deploy key) ==="
+          ssh-keygen -yf ~/.ssh/deploy_key
+
+          echo "=== Testing SSH connection to GitHub (verbose) ==="
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -vT git@github.com 2>&1 || true
           SSH_EXIT=$?
           if [ $SSH_EXIT -eq 255 ]; then
-            echo "❌ SSH authentication FAILED (exit $SSH_EXIT) — check that the public key is added as a deploy key with write access"
+            echo "❌ SSH authentication FAILED — the public key above does NOT match any deploy key registered at:"
+            echo "   https://github.com/${{ github.repository }}/settings/keys"
             exit 1
           else
-            echo "✅ SSH authentication succeeded (exit $SSH_EXIT)"
+            echo "✅ SSH authentication succeeded"
           fi
 
       - name: Checkout repository
