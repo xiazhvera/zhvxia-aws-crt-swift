@@ -10,7 +10,7 @@ on:
     types: [published]  # Triggers when a release is published via GitHub UI
 
 permissions:
-  contents: write       # Required to push commits, tags, and manage releases
+  contents: read       # Required to push commits, tags, and manage releases
 
 env:
   AWS_REGION: us-east-1
@@ -149,8 +149,8 @@ jobs:
           echo "Deleting old release..."
           gh release delete "$TAG_NAME" --yes
 
-          # Delete the old tag (locally and remotely)
-          git tag -d "$TAG_NAME"
+          # Delete the old tag (remotely; local tag may not exist since we checked out main)
+          git tag -d "$TAG_NAME" || true
           git push origin --delete "$TAG_NAME"
 
           # Create a new annotated tag pointing to the new commit
