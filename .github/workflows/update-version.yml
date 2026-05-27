@@ -21,16 +21,37 @@ jobs:
     runs-on: ubuntu-latest
     environment: DEPLOY_KEY_PRIVATE  # Replace 'release' with your actual environment name
     steps:
+      - name: Retrieve deploy key and setup SSH
+        run: |
+          # Set up SSH configuration
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Add GitHub to known hosts to avoid host verification prompt
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+          # Configure SSH to use the key for GitHub
+          cat > ~/.ssh/config << 'EOF'
+          Host github.com
+            HostName github.com
+            User git
+            IdentityFile ~/.ssh/deploy_key
+          EOF
+          chmod 600 ~/.ssh/config
+          ssh -T git@github.com -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no 2>&1 || true
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
-      - name: Configure git to use HTTPS with GITHUB_TOKEN
+      - name: Configure git to use SSH with deploy key
         run: |
-          # Use HTTPS with GITHUB_TOKEN — no deploy key required
-          git remote set-url origin https://bot:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          # Set remote URL to use SSHs
+          git remote set-url origin git@github.com:${{ github.repository }}.git
 
       - name: Extract version from tag
         id: get_version
@@ -137,11 +158,11 @@ jobs:
           # Delete the old release (this also allows us to delete the tag)
           echo "Deleting old release..."
           gh release delete "$TAG_NAME" --yes
-
+          
           # Delete the old tag (both locally and remotely)
           git tag -d "$TAG_NAME"
           git push origin --delete "$TAG_NAME"
-
+          
           # Create a new tag pointing to the new commit with the updated version
           # Use the release body as the tag message
           if [ -n "$RELEASE_BODY" ]; then
@@ -150,24 +171,24 @@ jobs:
             git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
           fi
           git push origin "$TAG_NAME"
-
+          
           # Recreate the release with the original title and body
           echo "Recreating release with original title and body..."
           PRERELEASE_FLAG=""
           if [ "$IS_PRERELEASE" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-
+          
           # Use the original title, or fall back to tag name if empty
           if [ -n "$RELEASE_TITLE" ]; then
             TITLE="$RELEASE_TITLE"
           else
             TITLE="$TAG_NAME"
           fi
-
+          
           gh release create "$TAG_NAME" \
             --title "$TITLE" \
             --notes "$RELEASE_BODY" \
             $PRERELEASE_FLAG
-
+          
           echo "✅ CRTVersion updated to $VERSION, tag $TAG_NAME moved to new commit, and release recreated"
