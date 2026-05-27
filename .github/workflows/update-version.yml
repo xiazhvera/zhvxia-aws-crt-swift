@@ -10,7 +10,7 @@ on:
     types: [published]  # Triggers when a release is published via GitHub UI
 
 permissions:
-  contents: read       # Required to push commits, tags, and manage releases
+  contents: write       # Required to push commits, tags, and manage releases
 
 env:
   AWS_REGION: us-east-1
@@ -25,8 +25,10 @@ jobs:
           # Write the deploy key to a temp file
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ vars.DEPLOY_KEY_ENV }}" | tr -d '\r' | sed 's/^[[:space:]]*//' > ~/.ssh/deploy_key
+          # Use printf (not echo) to avoid extra newlines; strip \r in case key was saved on Windows
+          printf '%s' "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
           # Ensure file ends with a newline (required by OpenSSH)
+          echo "" >> ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
           # Trust GitHub's host key
@@ -145,33 +147,10 @@ jobs:
 
           echo "✅ Pushed version update to main"
 
-          # Delete the old release (required before we can delete the tag)
-          echo "Deleting old release..."
-          gh release delete "$TAG_NAME" --yes
+          # Force-move the tag to the new commit — no need to delete/recreate the release.
+          # GitHub releases are associated with the tag name; after the force-push the release
+          # automatically points to the new commit.
+          git tag -f "$TAG_NAME"
+          git push origin --force "refs/tags/$TAG_NAME"
 
-          # Delete the old tag (remotely; local tag may not exist since we checked out main)
-          git tag -d "$TAG_NAME" || true
-          git push origin --delete "$TAG_NAME"
-
-          # Create a new annotated tag pointing to the new commit
-          if [ -n "$RELEASE_BODY" ]; then
-            git tag -a "$TAG_NAME" -m "$RELEASE_BODY"
-          else
-            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-          fi
-          git push origin "$TAG_NAME"
-
-          # Recreate the release with the original title and body
-          PRERELEASE_FLAG=""
-          if [ "$IS_PRERELEASE" = "true" ]; then
-            PRERELEASE_FLAG="--prerelease"
-          fi
-
-          TITLE="${RELEASE_TITLE:-$TAG_NAME}"
-
-          gh release create "$TAG_NAME" \
-            --title "$TITLE" \
-            --notes "$RELEASE_BODY" \
-            $PRERELEASE_FLAG
-
-          echo "✅ CRTVersion updated to $VERSION, tag $TAG_NAME moved to new commit, and release recreated"
+          echo "✅ CRTVersion updated to $VERSION and tag $TAG_NAME moved to new commit"
