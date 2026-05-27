@@ -26,7 +26,7 @@ jobs:
           # Write the deploy key to a temp file
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo -e "${{ vars.DEPLOY_KEY_ENV }}" > ~/.ssh/deploy_key
+          echo "${{ vars.DEPLOY_KEY_ENV }}" | tr -d '\r' | sed 's/^[[:space:]]*//' > ~/.ssh/deploy_key
           # Ensure file ends with a newline (required by OpenSSH)
           chmod 600 ~/.ssh/deploy_key
 
@@ -39,6 +39,7 @@ jobs:
 
       - name: Verify deploy key works
         run: |
+          echo ~/.ssh/deploy_key
           echo "=== Key file size (0 bytes = secret is empty or not accessible) ==="
           wc -c < ~/.ssh/deploy_key
 
