@@ -25,7 +25,7 @@ jobs:
           # Write the deploy key to a temp file
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ vars.DEPLOY_KEY_ENV }}" | tr -d '\r' | sed 's/^[[:space:]]*//' > ~/.ssh/deploy_key
+          echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' | sed 's/^[[:space:]]*//' > ~/.ssh/deploy_key
           # Ensure file ends with a newline (required by OpenSSH)
           chmod 600 ~/.ssh/deploy_key
 
@@ -103,6 +103,7 @@ jobs:
           echo "Updated $VERSION_FILE:"
           cat "$VERSION_FILE"
 
+          # Check if the version was actually updated
           if grep -q "public static let CRTVersion = \"$VERSION\"" "$VERSION_FILE"; then
             echo "✅ CRTVersion successfully updated to $VERSION"
           else
@@ -140,7 +141,7 @@ jobs:
           git add Source/AwsCommonRuntimeKit/CommonRuntimeKit.swift
           git commit -m "chore: update CRTVersion to $VERSION"
 
-          # Push directly to main
+          # Push the commit to main
           git push origin main
 
           echo "✅ Pushed version update to main"
