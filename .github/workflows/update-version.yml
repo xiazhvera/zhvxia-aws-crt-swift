@@ -21,41 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: DEPLOY_KEY_PRIVATE  # Replace 'release' with your actual environment name
     steps:
-      - name: Retrieve deploy key and setup SSH
-        run: |
-          # Set up SSH configuration
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-
-          # Add GitHub to known hosts to avoid host verification prompt
-          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-
-          # Configure SSH to use the key for GitHub
-          cat > ~/.ssh/config << 'EOF'
-          Host github.com
-            HostName github.com
-            User git
-            IdentityFile ~/.ssh/deploy_key
-          EOF
-          chmod 600 ~/.ssh/config
-
-          # Force git to use the deploy key regardless of any SSH agent
-          echo "GIT_SSH_COMMAND=ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" >> $GITHUB_ENV
-
-          ssh -T git@github.com -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no 2>&1 || true
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: main
-          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configure git to use SSH with deploy key
+      - name: Configure git to use HTTPS with GITHUB_TOKEN
         run: |
-          # Set remote URL to use SSHs
-          git remote set-url origin git@github.com:${{ github.repository }}.git
+          # Use HTTPS with GITHUB_TOKEN — no deploy key required
+          git remote set-url origin https://${{ GITHUB_ACTOR }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Extract version from tag
         id: get_version
