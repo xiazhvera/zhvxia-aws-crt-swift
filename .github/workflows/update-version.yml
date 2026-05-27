@@ -10,7 +10,7 @@ on:
     types: [published]  # Triggers when a release is published via GitHub UI
 
 permissions:
-  contents: write       # Required to push commits, tags, and manage releases
+  contents: read       # Required to push commits, tags, and manage releases
 
 env:
   AWS_REGION: us-east-1
