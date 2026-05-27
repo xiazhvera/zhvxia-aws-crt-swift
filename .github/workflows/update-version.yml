@@ -36,6 +36,23 @@ jobs:
           # Point git at the key file directly — no agent or passphrase prompt needed
           echo "GIT_SSH_COMMAND=ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" >> $GITHUB_ENV
 
+      - name: Verify deploy key works
+        run: |
+          echo "=== Key fingerprint ==="
+          ssh-keygen -lf ~/.ssh/deploy_key
+
+          echo "=== Testing SSH connection to GitHub ==="
+          # Exit code 1 is expected (GitHub says "Hi <user>! You've successfully authenticated")
+          # Exit code 255 means authentication failed
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -T git@github.com 2>&1 && true
+          SSH_EXIT=$?
+          if [ $SSH_EXIT -eq 255 ]; then
+            echo "❌ SSH authentication FAILED (exit $SSH_EXIT) — check that the public key is added as a deploy key with write access"
+            exit 1
+          else
+            echo "✅ SSH authentication succeeded (exit $SSH_EXIT)"
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
