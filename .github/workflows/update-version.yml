@@ -10,8 +10,7 @@ on:
     types: [published]  # Triggers when a release is published via GitHub UI
 
 permissions:
-  contents: write       # Required to checkout repository and push branches
-  pull-requests: write  # Required to create and merge pull requests
+  contents: write       # Required to push commits, tags, and manage releases
 
 env:
   AWS_REGION: us-east-1
@@ -39,7 +38,6 @@ jobs:
 
       - name: Verify deploy key works
         run: |
-          echo ~/.ssh/deploy_key
           echo "=== Key file size (0 bytes = secret is empty or not accessible) ==="
           wc -c < ~/.ssh/deploy_key
 
@@ -92,24 +90,19 @@ jobs:
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION from tag: $TAG_NAME"
-          
-          # Store release info for later use
-          echo "Release title: ${{ github.event.release.name }}"
-          echo "Release is prerelease: ${{ github.event.release.prerelease }}"
 
       - name: Update CRTVersion in CommonRuntimeKit.swift
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           VERSION_FILE="Source/AwsCommonRuntimeKit/CommonRuntimeKit.swift"
-          
+
           # Update the CRTVersion in CommonRuntimeKit.swift
           sed -i "s/public static let CRTVersion = \".*\"/public static let CRTVersion = \"$VERSION\"/" "$VERSION_FILE"
-          
+
           # Verify the update
           echo "Updated $VERSION_FILE:"
           cat "$VERSION_FILE"
-          
-          # Check if the version was actually updated
+
           if grep -q "public static let CRTVersion = \"$VERSION\"" "$VERSION_FILE"; then
             echo "✅ CRTVersion successfully updated to $VERSION"
           else
@@ -129,41 +122,7 @@ jobs:
             git diff
           fi
 
-      - name: Create branch, commit version update, and open PR
-        if: steps.check_changes.outputs.has_changes == 'true'
-        id: create_pr
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          TAG_NAME="${{ steps.get_version.outputs.tag }}"
-          BRANCH_NAME="version-update/$TAG_NAME"
-
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-          # Create and switch to a new branch
-          git checkout -b "$BRANCH_NAME"
-
-          # Commit the version update
-          git add Source/AwsCommonRuntimeKit/CommonRuntimeKit.swift
-          git commit -m "chore: update CRTVersion to $VERSION"
-
-          # Push the branch
-          git push origin "$BRANCH_NAME"
-
-          # Create a pull request
-          PR_URL=$(gh pr create \
-            --title "chore: update CRTVersion to $VERSION" \
-            --body "Automated version update for release \`$TAG_NAME\`." \
-            --base main \
-            --head "$BRANCH_NAME")
-
-          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "✅ Pull request created: $PR_URL"
-
-      - name: Merge PR and recreate release
+      - name: Commit and push directly to main, then recreate release
         if: steps.check_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -173,52 +132,46 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           TAG_NAME="${{ steps.get_version.outputs.tag }}"
-          BRANCH_NAME="${{ steps.create_pr.outputs.branch_name }}"
 
-          # Merge the PR (squash) and delete the branch
-          gh pr merge "$BRANCH_NAME" --squash --delete-branch
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
-          echo "✅ PR merged"
+          # Commit the version update directly on main
+          git add Source/AwsCommonRuntimeKit/CommonRuntimeKit.swift
+          git commit -m "chore: update CRTVersion to $VERSION"
 
-          # Pull the updated main so the new commit is available locally for tagging
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
+          # Push directly to main
+          git push origin main
 
-          # Delete the old release (this also allows us to delete the tag)
+          echo "✅ Pushed version update to main"
+
+          # Delete the old release (required before we can delete the tag)
           echo "Deleting old release..."
           gh release delete "$TAG_NAME" --yes
-          
-          # Delete the old tag (both locally and remotely)
+
+          # Delete the old tag (locally and remotely)
           git tag -d "$TAG_NAME"
           git push origin --delete "$TAG_NAME"
-          
-          # Create a new tag pointing to the new commit with the updated version
-          # Use the release body as the tag message
+
+          # Create a new annotated tag pointing to the new commit
           if [ -n "$RELEASE_BODY" ]; then
             git tag -a "$TAG_NAME" -m "$RELEASE_BODY"
           else
             git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
           fi
           git push origin "$TAG_NAME"
-          
+
           # Recreate the release with the original title and body
-          echo "Recreating release with original title and body..."
           PRERELEASE_FLAG=""
           if [ "$IS_PRERELEASE" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          
-          # Use the original title, or fall back to tag name if empty
-          if [ -n "$RELEASE_TITLE" ]; then
-            TITLE="$RELEASE_TITLE"
-          else
-            TITLE="$TAG_NAME"
-          fi
-          
+
+          TITLE="${RELEASE_TITLE:-$TAG_NAME}"
+
           gh release create "$TAG_NAME" \
             --title "$TITLE" \
             --notes "$RELEASE_BODY" \
             $PRERELEASE_FLAG
-          
+
           echo "✅ CRTVersion updated to $VERSION, tag $TAG_NAME moved to new commit, and release recreated"
