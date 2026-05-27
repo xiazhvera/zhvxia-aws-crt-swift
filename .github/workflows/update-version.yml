@@ -25,10 +25,8 @@ jobs:
           # Write the deploy key to a temp file
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          # Use printf (not echo) to avoid extra newlines; strip \r in case key was saved on Windows
-          printf '%s' "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          echo "${{ vars.DEPLOY_KEY_ENV }}" | tr -d '\r' | sed 's/^[[:space:]]*//' > ~/.ssh/deploy_key
           # Ensure file ends with a newline (required by OpenSSH)
-          echo "" >> ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
           # Trust GitHub's host key
